@@ -3,6 +3,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 import 'package:uokleo/adminScreen/addblog.dart';
 import 'package:uokleo/adminScreen/addproject.dart';
 import 'package:uokleo/adminScreen/addprojectdate.dart';
@@ -17,6 +18,7 @@ class AdminContect extends StatefulWidget {
 
 class _AdminContectState extends State<AdminContect> {
   TextEditingController projectNameController = TextEditingController();
+  TextEditingController projectFlyerController = TextEditingController();
   String? selectedCaption;
   Set<QueryDocumentSnapshot> selectedProjects = {};
 
@@ -119,7 +121,7 @@ class _AdminContectState extends State<AdminContect> {
     );
   }
 
-  void _deleteProjects(String projectId) {
+  void _deleteProjects() {
     ScaffoldMessenger.of(context).hideCurrentSnackBar();
 
     TextEditingController projectIdController = TextEditingController();
@@ -134,7 +136,7 @@ class _AdminContectState extends State<AdminContect> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Enter project ID to delete:'),
+                Text('Enter project name to delete:'),
                 TextField(
                   controller: projectIdController,
                 ),
@@ -158,7 +160,8 @@ class _AdminContectState extends State<AdminContect> {
                     if (enteredProjectId.isEmpty) {
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
-                          content: Text('Please enter a project ID to delete.'),
+                          content:
+                              Text('Please enter a project name to delete.'),
                           backgroundColor: Colors.red,
                         ),
                       );
@@ -167,23 +170,25 @@ class _AdminContectState extends State<AdminContect> {
 
                     var docSnapshot = await FirebaseFirestore.instance
                         .collection('Projects')
-                        .doc(enteredProjectId)
+                        .where('project_name', isEqualTo: enteredProjectId)
                         .get();
 
-                    if (!docSnapshot.exists) {
+                    if (docSnapshot.docs.isEmpty) {
+                      print(enteredProjectId);
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
                           content: Text(
-                              'No project found with the entered project ID.'),
+                              'No project found with the entered project name.'),
                           backgroundColor: Colors.red,
                         ),
                       );
                       return;
                     }
+                    var projectDoc = docSnapshot.docs.first;
 
-                    if (docSnapshot.data()!.containsKey('image_urls')) {
+                    if (projectDoc.data()!.containsKey('image_urls')) {
                       var imageUrls =
-                          List<String>.from(docSnapshot.data()!['image_urls']);
+                          List<String>.from(projectDoc.data()!['image_urls']);
                       for (var imageUrl in imageUrls) {
                         try {
                           await FirebaseStorage.instance
@@ -196,7 +201,7 @@ class _AdminContectState extends State<AdminContect> {
                     }
 
                     try {
-                      await docSnapshot.reference.delete();
+                      await projectDoc.reference.delete();
                     } catch (e) {
                       print('Error deleting project document: $e');
                     }
@@ -361,7 +366,7 @@ class _AdminContectState extends State<AdminContect> {
               // Delete Projects Block
               ElevatedButton(
                 onPressed: () {
-                  _deleteProjects("projectId");
+                  _deleteProjects();
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.red,
